@@ -1,0 +1,20 @@
+flowchart LR
+    Channel["{{user|Budget channel|Both spouses}}"]
+    Discord["Discord<br/>/ask and the reply"]
+    API["{{apigateway|API Gateway|/discord}}"]
+    Webhook["{{lambda|Webhook|Signature and allowlist}}"]
+    Queue["{{sqs|Questions|SQS}}"]
+    DLQ["{{sqs|Dead letters|Give up after retries}}"]
+    Worker["{{lambda|Worker|Python, then Sonnet}}"]
+    State["{{dynamodb|Messaging state|One reply per question}}"]
+    Ledger["{{dynamodb|Ledger|Charges and changes}}"]
+    Bedrock["{{bedrock|Amazon Bedrock|Claude Sonnet}}"]
+
+    Channel -->|Types /ask| Discord
+    Discord -->|Signed request| API --> Webhook -->|Accepted| Queue --> Worker
+    Queue -->|Retries used up| DLQ
+    Worker <-->|Claim| State
+    Worker <-->|Read and change| Ledger
+    Worker <-->|When AI is on| Bedrock
+    Worker -->|Edits the reply| Discord
+    Discord -->|Both of you see it| Channel

@@ -1,0 +1,21 @@
+flowchart LR
+    Plaid["Plaid<br/>Read-only cards"]
+    API["{{apigateway|API Gateway|/plaid}}"]
+    Hook["{{lambda|Plaid webhook|Checks the signature}}"]
+    Sync["{{lambda|Card sync|7:30 AM and PM, and Plaid}}"]
+    Schedule["{{eventbridge|Scheduler|8:00 AM report, 7:30 sync}}"]
+    Report["{{lambda|Morning report|Python totals, no AI}}"]
+    Discord["Discord<br/>The 8 AM post"]
+    Ledger["{{dynamodb|Ledger|Charges and freshness}}"]
+    Secrets["{{secrets|Secrets Manager|Discord and Plaid}}"]
+    Watch["{{cloudwatch|CloudWatch|Logs and alarms}}"]
+
+    Plaid -->|New data is ready| API --> Hook -->|Starts a sync| Sync
+    Sync -->|Pulls transactions| Plaid
+    Sync -->|Saves charges| Ledger
+    Schedule -->|8:00 AM| Report -->|Posts the update| Discord
+    Report --> Ledger
+    Secrets -.->|Webhook URL| Report
+    Secrets -.->|Keys and tokens| Sync
+    Report -.-> Watch
+    Sync -.-> Watch

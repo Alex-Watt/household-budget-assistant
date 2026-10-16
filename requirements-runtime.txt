@@ -1,0 +1,4 @@
+# Used by both the Python package and the Linux Lambda asset build.
+cryptography==50.0.2
+boto3==1.43.112
+tzdata==2026.5

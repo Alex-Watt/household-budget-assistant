@@ -1,0 +1,22 @@
+.venv/
+.build/
+cdk.out/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+__pycache__/
+*.pyc
+.env
+.env.*
+*.egg-info/
+dist/
+node_modules/
+*.csv
+!.env.example
+
+# Credential hand-off files. Secrets belong in AWS Secrets Manager, never in Git.
+*secret*.txt
+*secret*.json
+*credentials*.txt
+keysecret*
+

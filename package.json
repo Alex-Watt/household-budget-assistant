@@ -1,0 +1,8 @@
+{
+  "name": "household-budget-infrastructure",
+  "private": true,
+  "description": "Pinned AWS CDK CLI for local and CI synthesis",
+  "devDependencies": {
+    "aws-cdk": "2.1145.0"
+  }
+}

@@ -1,0 +1,81 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: GitHub Actions OIDC role scoped to this repository's protected CD deployment environment.
+
+Parameters:
+  GitHubOwner:
+    Type: String
+    Default: Alex-Watt
+  GitHubOwnerId:
+    Type: String
+    Default: '294831499'
+    AllowedPattern: '[0-9]+'
+  GitHubRepository:
+    Type: String
+    Default: household-budget-assistant
+  GitHubRepositoryId:
+    Type: String
+    Default: '0000000000'
+    AllowedPattern: '[0-9]+'
+  GitHubEnvironment:
+    Type: String
+    Default: aws-production
+  ExistingGitHubOidcProviderArn:
+    Type: String
+    Default: ''
+    Description: Leave empty to create the provider; set this if token.actions.githubusercontent.com already exists in this AWS account.
+
+Conditions:
+  CreateGitHubOidcProvider: !Equals [!Ref ExistingGitHubOidcProviderArn, '']
+
+Resources:
+  GitHubActionsOidcProvider:
+    Type: AWS::IAM::OIDCProvider
+    Condition: CreateGitHubOidcProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList:
+        - sts.amazonaws.com
+
+  GitHubActionsDeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: HouseholdBudgetGitHubDeployRole
+      Description: Allows this repository's main branch production environment to assume this account's CDK bootstrap roles.
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !If
+                - CreateGitHubOidcProvider
+                - !Ref GitHubActionsOidcProvider
+                - !Ref ExistingGitHubOidcProviderArn
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+                token.actions.githubusercontent.com:sub: !Sub 'repo:${GitHubOwner}@${GitHubOwnerId}/${GitHubRepository}@${GitHubRepositoryId}:environment:${GitHubEnvironment}'
+      Policies:
+        - PolicyName: AssumeThisAccountsCdkBootstrapRoles
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sts:AssumeRole
+                  - sts:TagSession
+                Resource:
+                  - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/cdk-hnb659fds-deploy-role-${AWS::AccountId}-${AWS::Region}'
+                  - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/cdk-hnb659fds-file-publishing-role-${AWS::AccountId}-${AWS::Region}'
+                  - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/cdk-hnb659fds-image-publishing-role-${AWS::AccountId}-${AWS::Region}'
+                  - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/cdk-hnb659fds-lookup-role-${AWS::AccountId}-${AWS::Region}'
+
+Outputs:
+  GitHubActionsDeployRoleArn:
+    Description: Set this as the AWS_DEPLOY_ROLE_ARN variable in the aws-production GitHub environment.
+    Value: !GetAtt GitHubActionsDeployRole.Arn
+  GitHubActionsOidcProviderArn:
+    Condition: CreateGitHubOidcProvider
+    Value: !Ref GitHubActionsOidcProvider
+

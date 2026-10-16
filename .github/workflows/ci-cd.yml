@@ -1,0 +1,132 @@
+name: CI and AWS CD
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: household-budget-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Test, lint, type check, and synth
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.14'
+          cache: pip
+          cache-dependency-path: |
+            requirements*.txt
+            pyproject.toml
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+
+      - name: Install Python dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements-dev.txt
+
+      - name: Install pinned CDK CLI
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Verify code, build, and synthesize with fake settings
+        run: python scripts/check.py --synth
+
+  deploy:
+    name: Deploy to the single AWS account
+    needs: verify
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      github.event_name != 'pull_request' &&
+      vars.AWS_DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # AWS_DEPLOY_ENABLED is a REPOSITORY variable; environment vars arrive after job selection.
+    environment: aws-production
+    permissions:
+      contents: read
+      id-token: write
+    concurrency:
+      group: household-budget-aws-production
+      cancel-in-progress: false
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.14'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+
+      - name: Install Python dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements.txt
+
+      - name: Install pinned CDK CLI
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Build Lambda Linux dependencies
+        run: python scripts/build_lambda.py
+
+      - name: Validate deployment configuration
+        env:
+          AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+          AWS_REGION: ${{ vars.AWS_REGION }}
+          AWS_DEPLOY_ROLE_ARN: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          DISCORD_APPLICATION_ID: ${{ vars.DISCORD_APPLICATION_ID }}
+          DISCORD_PUBLIC_KEY: ${{ vars.DISCORD_PUBLIC_KEY }}
+          DISCORD_GUILD_ID: ${{ vars.DISCORD_GUILD_ID }}
+          DISCORD_CHANNEL_ID: ${{ vars.DISCORD_CHANNEL_ID }}
+          DISCORD_MEMBER_1_ID: ${{ vars.DISCORD_MEMBER_1_ID }}
+          DISCORD_MEMBER_2_ID: ${{ vars.DISCORD_MEMBER_2_ID }}
+          LIVE_MESSAGING_ENABLED: 'false'
+          PLAID_ENABLED: 'false'
+          AI_ENABLED: 'false'
+        run: python scripts/validate_deploy.py
+
+      - name: Configure AWS credentials through OIDC
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          allowed-account-ids: ${{ vars.AWS_ACCOUNT_ID }}
+          role-session-name: GitHubActionsHouseholdBudget
+
+      - name: Synthesize CDK template
+        env:
+          DISCORD_APPLICATION_ID: ${{ vars.DISCORD_APPLICATION_ID }}
+          DISCORD_PUBLIC_KEY: ${{ vars.DISCORD_PUBLIC_KEY }}
+          DISCORD_GUILD_ID: ${{ vars.DISCORD_GUILD_ID }}
+          DISCORD_CHANNEL_ID: ${{ vars.DISCORD_CHANNEL_ID }}
+          DISCORD_MEMBER_1_ID: ${{ vars.DISCORD_MEMBER_1_ID }}
+          DISCORD_MEMBER_2_ID: ${{ vars.DISCORD_MEMBER_2_ID }}
+          CDK_DEFAULT_ACCOUNT: ${{ vars.AWS_ACCOUNT_ID }}
+          CDK_DEFAULT_REGION: ${{ vars.AWS_REGION }}
+          LIVE_MESSAGING_ENABLED: 'false'
+          PLAID_ENABLED: 'false'
+          AI_ENABLED: 'false'
+        run: npx --no-install cdk synth --quiet --no-lookups
+
+      - name: Deploy CDK stack
+        run: npx --no-install cdk deploy HouseholdBudgetMessaging --app cdk.out --require-approval never --progress events
+

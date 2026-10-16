@@ -1,0 +1,20 @@
+flowchart LR
+    Repo["{{github|GitHub|household-budget-assistant}}"]
+    CI["GitHub Actions<br/>Tests, lint, template check"]
+    PC["This PC<br/>scripts/deploy.py"]
+
+    subgraph AWS["Same AWS account, us-east-2"]
+        direction TB
+        Role["{{iam|CDK deploy role|Scoped to this app}}"]
+        Bucket["{{s3|Asset bucket|Lambda package}}"]
+        CFN["{{cloudformation|CloudFormation|HouseholdBudgetMessaging}}"]
+    end
+
+    App["Running stack<br/>API, Lambdas, tables"]
+
+    Repo -->|Pull request or push| CI
+    PC -->|This is the deploy that runs| Role
+    Role --> Bucket
+    Role --> CFN
+    Bucket -->|Code| App
+    CFN -->|Create or update| App

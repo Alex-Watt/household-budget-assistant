@@ -1,0 +1,14 @@
+{
+  "maxTextSize": 5000000,
+  "securityLevel": "loose",
+  "flowchart": {
+    "htmlLabels": true,
+    "nodeSpacing": 28,
+    "rankSpacing": 46,
+    "padding": 14
+  },
+  "themeVariables": {
+    "fontSize": "15px",
+    "fontFamily": "Segoe UI, Arial, sans-serif"
+  }
+}
