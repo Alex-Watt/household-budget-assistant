@@ -16,7 +16,7 @@ Use the same AWS account and region for the OIDC role, CDK bootstrap, and app de
 
 Sign in to the intended AWS account with an administrator identity, then create a CloudFormation stack from [infrastructure/github-oidc-role.yaml](../infrastructure/github-oidc-role.yaml) in the chosen region. The template is pinned to this GitHub repository using immutable owner/repository IDs and the `aws-production` environment. It creates the GitHub OIDC provider if absent and a role limited to assuming the four standard CDK bootstrap roles for this account and region.
 
-Before creating the stack, check IAM for an existing provider with URL `https://token.actions.githubusercontent.com`. If it exists, pass its ARN as `ExistingGitHubOidcProviderArn` in the stack parameters; IAM allows only one provider per URL per account. The template defaults name `Alex-Watt/household-budget-assistant`, and the repository ID is the placeholder `0000000000`. Replace the owner and repository IDs with the immutable IDs from the GitHub API before creating the role. If you fork or rename the repository, update those values to match that repo.
+Before creating the stack, check IAM for an existing provider with URL `https://token.actions.githubusercontent.com`. If it exists, pass its ARN as `ExistingGitHubOidcProviderArn` in the stack parameters; IAM allows only one provider per URL per account. The template defaults match `Alex-Watt/household-budget-assistant` and its immutable IDs. If you fork or rename the repository, update the owner and repository names and IDs to match that repo.
 
 After the stack completes, copy its `GitHubActionsDeployRoleArn` output. The CloudFormation template creates IAM resources only; it does not deploy the application.
 

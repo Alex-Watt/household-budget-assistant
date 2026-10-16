@@ -14,7 +14,7 @@ Parameters:
     Default: household-budget-assistant
   GitHubRepositoryId:
     Type: String
-    Default: '0000000000'
+    Default: '1422356953'
     AllowedPattern: '[0-9]+'
   GitHubEnvironment:
     Type: String

@@ -76,7 +76,7 @@ Pull requests run the tests on GitHub. Deploys run from this PC, because this pr
 The path is **Plaid or CSV import → transactions in DynamoDB → Python budget calculations → Claude Sonnet interprets and explains → reply in the Discord channel**.
 
 - **Python owns every number.** Totals, dates, categories, refunds, pace and remaining budget are Decimal arithmetic with tests. The model chooses among seventeen restricted tools and words the answer. Every dollar amount and percentage in its reply must appear verbatim in a tool result, or the plain Python summary is posted instead.
-- **Highest Sonnet, automatically.** The bot calls the newest Claude Sonnet the AWS account can use, through Amazon Bedrock, and moves up on its own when a newer one is released. On 14 October the live answers used Sonnet 4.6. Run `python scripts/check_ai_access.py` to see what the account can call.
+- **Highest Sonnet, automatically.** The bot calls the newest Claude Sonnet the AWS account can use, through Amazon Bedrock, and moves up on its own when a newer one is released. Run `python scripts/check_ai_access.py` to see what the account can call.
 - **One previous exchange.** The bot remembers the last question and reply. “The October 9 one” finishes a listed charge choice. “Yes”, “yeah”, “sure”, or “ok” accepts the offer in that reply, such as a closer look at the categories it just flagged.
 - **Corrections.** "Move that Target charge to gifts" changes one transaction, audited and undoable. Costco and Target default to Groceries and household.
 - **No model for the morning post** or for plain commands like `summary` and `dining`.
